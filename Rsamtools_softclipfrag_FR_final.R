@@ -1,16 +1,42 @@
-# ====================== 1. 统一设置路径变量（核心修改） ======================
-# 根路径：所有路径的基础，修改时只需改这一处
-root_path <- "D:/run/softclip_newcode_260130_网站/FR_WTS_private_random_barcode_Homo/"
-# 输入文件子目录
+# ==============================================================================
+# Script: Rsamtools_softclipfrag_FR_final.R
+# Description:
+#   This script processes the *_Hwenjian.txt and *_Lwenjian.txt files generated
+#   by softclip_analysis_from_mtBAM.R. It compares fragments that contain
+#   soft-clipped reads (H1/L1) versus those without (H0/L0) across three
+#   metrics: mapping quality (Q30 proportion), GC content (median), and insert
+#   size (median). For each input file, it generates distribution tables and a
+#   summary result file.
+#   The script is split into two independent sections:
+#     - Part A: Process Hwenjian files (proper pairs flags 99/147)
+#     - Part B: Process Lwenjian files (proper pairs flags 163/83)
+# Input:
+#   "_Hwenjian.txt" and "_Lwenjian.txt"
+# Output:
+#   For each input file, seven output files are generated:
+#     - {prefix}_H1_Mqmean_table.txt / - {prefix}_H0_Mqmean_table.txt
+#     - {prefix}_H1_GC_table.txt / - {prefix}_H0_GC_table.txt
+#     - {prefix}_H1_insert_table.txt / - {prefix}_H0_insert_table.txt
+#     - {prefix}_H_result.txt
+# Usage: Rscript Rsamtools_softclipfrag_FR_final.R
+# ==============================================================================
+
+
+
+
+# ------------------------------------------------------------------------------
+# Part 1: Process H-strand files (flags 99 & 147)
+# ------------------------------------------------------------------------------
+
+
+# 1.1 Set paths for H-strand files
+root_path <- "D:/run/"
 input_subdir <- "Hwenjian/"
-# 完整输入路径（拼接根路径+输入子目录）
 input_full_path <- paste0(root_path, input_subdir)
-# 输出父子目录（新增的softclipfrag层）
 output_parent_subdir <- "softclipfrag/"
-# 完整输出父路径
 output_root_path <- paste0(root_path, output_parent_subdir)
 
-# 定义所有输出子目录（便于统一管理和创建）
+# Define output subdirectories for H-strand
 output_subdirs <- c(
   "H1_Mqmean_table",
   "H0_Mqmean_table",
@@ -21,29 +47,24 @@ output_subdirs <- c(
   "H_result"
 )
 
-# ====================== 2. 提前创建所有输出目录（避免循环内重复创建） ======================
-# 循环创建所有输出子目录，showWarnings=FALSE避免目录已存在时的警告
+# 1.2 Create all output directories
 for (subdir in output_subdirs) {
-  # 拼接完整输出子目录路径
   dir_path <- paste0(output_root_path, subdir, "/")
-  # recursive=TRUE确保嵌套目录（如softclipfrag）也能被创建
   dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
 }
 
-# ====================== 3. 核心分析逻辑（使用路径变量） ======================
-# 获取输入目录下的目标文件
+# 1.3 Get list of H-strand files
 ff1 <- list.files(input_full_path, pattern = "\\_Hwenjian.txt$")
-cat("找到待处理的文件数量：", length(ff1), "\n")
+cat("Number of H files found:", length(ff1), "\n")
 print(ff1)
 
-# 循环处理每个文件
+# 1.4 Process each H-strand file
 for(i in 1:length(ff1)){
-  # 读取文件（使用路径变量拼接，替代硬编码）
+  # Read data
   H <- read.table(paste0(input_full_path, ff1[i]), sep = "\t", header = TRUE)
-  # 更推荐用nrow()获取数据框行数（比length(H[,1])更直观、健壮）
   num_H <- nrow(H)
   
-  # 按soft-clipped分类筛选
+  # Split into soft-clipped (H1) and non-soft-clipped (H0) groups
   H1 <- subset(H, H$R1S5type != 0 | H$R2S5type != 0)
   number_H1 <- nrow(H1)
   number_H1_pro <- number_H1 / num_H
@@ -52,7 +73,7 @@ for(i in 1:length(ff1)){
   number_H0 <- nrow(H0)
   number_H0_pro <- number_H0 / num_H
   
-  # -------------------- Mqmean 分析 --------------------
+  # -------------------- Mean mapping quality (Mqmean) analysis --------------------
   H1_Mqmean_table <- as.data.frame(table(
     cut(na.omit(c(H1$R1Mqmean, H1$R2Mqmean)), 
         breaks = seq(0, 50, by = 1), 
@@ -71,11 +92,11 @@ for(i in 1:length(ff1)){
   H0_Mqmean_table[,3] <- H0_Mqmean_table[,2] / (number_H0 * 2)
   colnames(H0_Mqmean_table) <- c("Type","Number","Proportion")
   
-  # 计算Q30比例（30-50区间，对应breaks的16-25行）
+  # Q30 proportion
   H1_Mqmean_pro <- sum(H1_Mqmean_table[31:50,3]) / sum(H1_Mqmean_table[,3])
   H0_Mqmean_pro <- sum(H0_Mqmean_table[31:50,3]) / sum(H0_Mqmean_table[,3])
   
-  # 写入Mqmean结果（使用路径变量拼接）
+  # Write Mqmean tables
   write.table(
     x = H1_Mqmean_table, 
     file = paste0(output_root_path, "H1_Mqmean_table/", sub("_Hwenjian.txt", "_H1_Mqmean_table.txt", ff1[i])), 
@@ -87,7 +108,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- GC 分析 --------------------
+  # -------------------- GC content analysis --------------------
   H1_GC_table <- as.data.frame(table(
     cut(na.omit(c(H1$R1GC, H1$R2GC)), 
         breaks = seq(0, 100, by = 1), 
@@ -106,11 +127,11 @@ for(i in 1:length(ff1)){
   H0_GC_table[,3] <- H0_GC_table[,2] / (number_H0 * 2)
   colnames(H0_GC_table) <- c("Type","Number","Proportion")
   
-  # 计算GC中位数（增加na.rm=TRUE避免NA值导致结果出错）
+  # Median GC (with na.rm)
   H1_GC_median <- median(c(H1$R1GC, H1$R2GC), na.rm = TRUE)
   H0_GC_median <- median(c(H0$R1GC, H0$R2GC), na.rm = TRUE)
   
-  # 写入GC结果
+  # Write GC tables
   write.table(
     x = H1_GC_table, 
     file = paste0(output_root_path, "H1_GC_table/", sub("_Hwenjian.txt", "_H1_GC_table.txt", ff1[i])), 
@@ -122,7 +143,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- Insert size 分析 --------------------
+  # -------------------- Insert size analysis --------------------
   H1_insert_table <- as.data.frame(table(
     cut(na.omit(H1$R1isize), 
         breaks = seq(0, 600, by = 1), 
@@ -140,11 +161,11 @@ for(i in 1:length(ff1)){
   H0_insert_table[,3] <- H0_insert_table[,2] / number_H0
   colnames(H0_insert_table) <- c("Type","Number","Proportion")
   
-  # 计算insert size中位数（增加na.rm=TRUE）
+  # Median insert size
   H1_insert_median <- median(H1$R1isize, na.rm = TRUE)
   H0_insert_median <- median(H0$R1isize, na.rm = TRUE)
   
-  # 写入insert size结果
+  # Write insert size tables
   write.table(
     x = H1_insert_table, 
     file = paste0(output_root_path, "H1_insert_table/", sub("_Hwenjian.txt", "_H1_insert_table.txt", ff1[i])), 
@@ -156,7 +177,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- 汇总结果 --------------------
+  # -------------------- Summary result table --------------------
   H_result <- rbind(
     number_H1_pro, number_H0_pro,
     H1_Mqmean_pro, H0_Mqmean_pro,
@@ -176,37 +197,34 @@ for(i in 1:length(ff1)){
   )
   colnames(H_result) <- c("H strand")
   
-  # 写入汇总结果
+  # Write summary
   write.table(
     x = H_result, 
     file = paste0(output_root_path, "H_result/", sub("_Hwenjian.txt", "_H_result.txt", ff1[i])), 
     sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE
   )
   
-  # 进度提示：打印当前处理的文件，便于监控运行状态
-  cat(paste("已完成：", i, "/", length(ff1), " 文件：", ff1[i], "\n"))
+  cat(paste("H file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
 }
 
-cat("所有文件处理完成！结果已输出到：", output_root_path, "\n")
+cat("All H files processed! Output directory:", output_root_path, "\n")
 
 
 
 
+# ------------------------------------------------------------------------------
+# Part 2: Process L-strand files (flags 163 & 83)
+# ------------------------------------------------------------------------------
 
 
-# ====================== 1. 统一设置路径变量（核心修改） ======================
-# 根路径：所有路径的基础，修改时只需改这一处
-root_path <- "D:/run/softclip_newcode_260130_网站/FR_WTS_private_random_barcode_Homo/"
-# 输入文件子目录
+# 2.1 Set paths for L-strand files
+root_path <- "D:/run/"
 input_subdir <- "Lwenjian/"
-# 完整输入路径（拼接根路径+输入子目录）
 input_full_path <- paste0(root_path, input_subdir)
-# 输出父子目录（新增的softclipfrag层）
 output_parent_subdir <- "softclipfrag/"
-# 完整输出父路径
 output_root_path <- paste0(root_path, output_parent_subdir)
 
-# 定义所有输出子目录（便于统一管理和创建）
+# Define output subdirectories for L-strand
 output_subdirs <- c(
   "L1_Mqmean_table",
   "L0_Mqmean_table",
@@ -217,29 +235,24 @@ output_subdirs <- c(
   "L_result"
 )
 
-# ====================== 2. 提前创建所有输出目录（避免循环内重复创建） ======================
-# 循环创建所有输出子目录，showWarnings=FALSE避免目录已存在时的警告
+# 2.2 Create output directories (if not already created)
 for (subdir in output_subdirs) {
-  # 拼接完整输出子目录路径
   dir_path <- paste0(output_root_path, subdir, "/")
-  # recursive=TRUE确保嵌套目录（如softclipfrag）也能被创建
   dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
 }
 
-# ====================== 3. 核心分析逻辑（使用路径变量） ======================
-# 获取输入目录下的目标文件
+# 2.3 Get list of L-strand files
 ff1 <- list.files(input_full_path, pattern = "\\_Lwenjian.txt$")
-cat("找到待处理的文件数量：", length(ff1), "\n")
+cat("Number of L files found:", length(ff1), "\n")
 print(ff1)
 
-# 循环处理每个文件
+# 2.4 Process each L-strand file
 for(i in 1:length(ff1)){
-  # 读取文件（使用路径变量拼接，替代硬编码）
+  # Read data
   L <- read.table(paste0(input_full_path, ff1[i]), sep = "\t", header = TRUE)
-  # 更推荐用nrow()获取数据框行数（比length(L[,1])更直观、健壮）
   num_L <- nrow(L)
   
-  # 按soft-clipped分类筛选
+  # Split into soft-clipped (L1) and non-soft-clipped (L0) groups
   L1 <- subset(L, L$R1S5type != 0 | L$R2S5type != 0)
   number_L1 <- nrow(L1)
   number_L1_pro <- number_L1 / num_L
@@ -248,7 +261,7 @@ for(i in 1:length(ff1)){
   number_L0 <- nrow(L0)
   number_L0_pro <- number_L0 / num_L
   
-  # -------------------- Mqmean 分析 --------------------
+  # -------------------- Mean mapping quality (Mqmean) analysis --------------------
   L1_Mqmean_table <- as.data.frame(table(
     cut(na.omit(c(L1$R1Mqmean, L1$R2Mqmean)), 
         breaks = seq(0, 50, by = 1), 
@@ -267,11 +280,11 @@ for(i in 1:length(ff1)){
   L0_Mqmean_table[,3] <- L0_Mqmean_table[,2] / (number_L0 * 2)
   colnames(L0_Mqmean_table) <- c("Type","Number","Proportion")
   
-  # 计算Q30比例（30-50区间，对应breaks的16-25行）
+  # Q30 proportion
   L1_Mqmean_pro <- sum(L1_Mqmean_table[31:50,3]) / sum(L1_Mqmean_table[,3])
   L0_Mqmean_pro <- sum(L0_Mqmean_table[31:50,3]) / sum(L0_Mqmean_table[,3])
   
-  # 写入Mqmean结果（使用路径变量拼接）
+  # Write Mqmean tables
   write.table(
     x = L1_Mqmean_table, 
     file = paste0(output_root_path, "L1_Mqmean_table/", sub("_Lwenjian.txt", "_L1_Mqmean_table.txt", ff1[i])), 
@@ -283,7 +296,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- GC 分析 --------------------
+  # -------------------- GC content analysis --------------------
   L1_GC_table <- as.data.frame(table(
     cut(na.omit(c(L1$R1GC, L1$R2GC)), 
         breaks = seq(0, 100, by = 1), 
@@ -302,11 +315,11 @@ for(i in 1:length(ff1)){
   L0_GC_table[,3] <- L0_GC_table[,2] / (number_L0 * 2)
   colnames(L0_GC_table) <- c("Type","Number","Proportion")
   
-  # 计算GC中位数（增加na.rm=TRUE避免NA值导致结果出错）
+  # Median GC
   L1_GC_median <- median(c(L1$R1GC, L1$R2GC), na.rm = TRUE)
   L0_GC_median <- median(c(L0$R1GC, L0$R2GC), na.rm = TRUE)
   
-  # 写入GC结果
+  # Write GC tables
   write.table(
     x = L1_GC_table, 
     file = paste0(output_root_path, "L1_GC_table/", sub("_Lwenjian.txt", "_L1_GC_table.txt", ff1[i])), 
@@ -318,7 +331,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- Insert size 分析 --------------------
+  # -------------------- Insert size analysis --------------------
   L1_insert_table <- as.data.frame(table(
     cut(na.omit(L1$R1isize), 
         breaks = seq(0, 600, by = 1), 
@@ -336,11 +349,11 @@ for(i in 1:length(ff1)){
   L0_insert_table[,3] <- L0_insert_table[,2] / number_L0
   colnames(L0_insert_table) <- c("Type","Number","Proportion")
   
-  # 计算insert size中位数（增加na.rm=TRUE）
+  # Median insert size
   L1_insert_median <- median(L1$R1isize, na.rm = TRUE)
   L0_insert_median <- median(L0$R1isize, na.rm = TRUE)
   
-  # 写入insert size结果
+  # Write insert size tables
   write.table(
     x = L1_insert_table, 
     file = paste0(output_root_path, "L1_insert_table/", sub("_Lwenjian.txt", "_L1_insert_table.txt", ff1[i])), 
@@ -352,7 +365,7 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE
   )
   
-  # -------------------- 汇总结果 --------------------
+  # -------------------- Summary result table --------------------
   L_result <- rbind(
     number_L1_pro, number_L0_pro,
     L1_Mqmean_pro, L0_Mqmean_pro,
@@ -372,21 +385,17 @@ for(i in 1:length(ff1)){
   )
   colnames(L_result) <- c("L strand")
   
-  # 写入汇总结果
+  # Write summary
   write.table(
     x = L_result, 
     file = paste0(output_root_path, "L_result/", sub("_Lwenjian.txt", "_L_result.txt", ff1[i])), 
     sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE
   )
   
-  # 进度提示：打印当前处理的文件，便于监控运行状态
-  cat(paste("已完成：", i, "/", length(ff1), " 文件：", ff1[i], "\n"))
+  cat(paste("L file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
 }
 
-cat("所有文件处理完成！结果已输出到：", output_root_path, "\n")
-
-
-
+cat("All L files processed! Output directory:", output_root_path, "\n")
 
 
 
