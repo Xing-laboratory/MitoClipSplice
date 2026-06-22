@@ -52,7 +52,7 @@ A[,15]<-as.numeric(A[,15])
 A$V14[is.na(A$V14)] <- 0
 A$V15[is.na(A$V15)] <- 0
 # Extract soft-clip bases at 5' end
-A[,16]<-substr(A$seq, 1, A[,15])
+A[,16]<-substr(A$seq, 1, A[,15])               # soft-clip region
 A[,17]<-substr(A$seq, A[,15]+1, A[,15]+1)      # first base after soft-clip
 A[,18]<-substr(A$seq, A[,15]+1, A[,15]+2)      # first two bases after soft-clip
 A[,19]<-substr(A$seq, A[,15]+1, A[,15]+3)      # first three bases after soft-clip
@@ -66,7 +66,7 @@ A[,22]<-as.numeric(A[,22])
 A$V21[is.na(A$V21)] <- 0
 A$V22[is.na(A$V22)] <- 0
 # Extract soft-clip bases at 3' end
-A[,23]<-substr(A$seq, nchar(A$seq)-A[,22]+1, nchar(A$seq))
+A[,23]<-substr(A$seq, nchar(A$seq)-A[,22]+1, nchar(A$seq))             # soft-clip region
 A[,24]<-substr(A$seq, nchar(A$seq)-A[,22], nchar(A$seq)-A[,22])        # first base before soft-clip
 A[,25]<-substr(A$seq, nchar(A$seq)-A[,22]-1, nchar(A$seq)-A[,22])      # first two bases before soft-clip
 A[,26]<-substr(A$seq, nchar(A$seq)-A[,22]-2, nchar(A$seq)-A[,22])      # first three bases before soft-clip
@@ -81,8 +81,9 @@ extract_and_sum_numbers <- function(str) {
   sum_of_numbers <- sum(as.numeric(numbers_as_strings))  
   return(sum_of_numbers)  
 }  
-sums <- sapply(A$cigar, extract_and_sum_numbers) 
+sums <- sapply(A$cigar, extract_and_sum_numbers)
 sums_copy<-as.data.frame(sums)
+
 
 # Total aligned length, compute end position
 A[,28]<-sums_copy$sums
@@ -102,7 +103,6 @@ qual_to_phred <- function(qual_str) {
   if (is.na(qual_str)) return(NA_integer_)
   as.integer(charToRaw(qual_str)) - 33
 }
-
 A$V30 <- lapply(A$V30, qual_to_phred)
 A$V31 <- lapply(A$V31, qual_to_phred)
 A$V32 <- lapply(A$V32, qual_to_phred)
