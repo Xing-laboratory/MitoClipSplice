@@ -2,7 +2,7 @@
 # Script: Rsamtools_softclipfrag_FR_final.R
 # Description:
 #   This script processes the *_Hwenjian.txt and *_Lwenjian.txt files generated
-#   by softclip_analysis_from_mtBAM.R. It compares fragments that contain
+#   by Rsamtools_FR_final.R. It compares fragments that contain
 #   soft-clipped reads (H1/L1) versus those without (H0/L0) across three
 #   metrics: mapping quality (Q30 proportion), GC content (median), and insert
 #   size (median). For each input file, it generates distribution tables and a
@@ -13,11 +13,15 @@
 # Input:
 #   "_Hwenjian.txt" and "_Lwenjian.txt"
 # Output:
-#   For each input file, seven output files are generated:
+#   For each input file, output files are generated:
 #     - {prefix}_H1_Mqmean_table.txt / - {prefix}_H0_Mqmean_table.txt
 #     - {prefix}_H1_GC_table.txt / - {prefix}_H0_GC_table.txt
 #     - {prefix}_H1_insert_table.txt / - {prefix}_H0_insert_table.txt
 #     - {prefix}_H_result.txt
+#     - {prefix}_L1_Mqmean_table.txt / - {prefix}_L0_Mqmean_table.txt
+#     - {prefix}_L1_GC_table.txt / - {prefix}_L0_GC_table.txt
+#     - {prefix}_L1_insert_table.txt / - {prefix}_L0_insert_table.txt
+#     - {prefix}_L_result.txt
 # Usage: Rscript Rsamtools_softclipfrag_FR_final.R
 # ==============================================================================
 
@@ -55,7 +59,7 @@ for (subdir in output_subdirs) {
 
 # 1.3 Get list of H-strand files
 ff1 <- list.files(input_full_path, pattern = "\\_Hwenjian.txt$")
-cat("Number of H files found:", length(ff1), "\n")
+cat("Number of H-strand files found:", length(ff1), "\n")
 print(ff1)
 
 # 1.4 Process each H-strand file
@@ -127,7 +131,7 @@ for(i in 1:length(ff1)){
   H0_GC_table[,3] <- H0_GC_table[,2] / (number_H0 * 2)
   colnames(H0_GC_table) <- c("Type","Number","Proportion")
   
-  # Median GC (with na.rm)
+  # Median GC
   H1_GC_median <- median(c(H1$R1GC, H1$R2GC), na.rm = TRUE)
   H0_GC_median <- median(c(H0$R1GC, H0$R2GC), na.rm = TRUE)
   
@@ -204,10 +208,10 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE
   )
   
-  cat(paste("H file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
+  cat(paste("H-strand file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
 }
 
-cat("All H files processed! Output directory:", output_root_path, "\n")
+cat("All H-strand files processed! Output directory:", output_root_path, "\n")
 
 
 
@@ -235,7 +239,7 @@ output_subdirs <- c(
   "L_result"
 )
 
-# 2.2 Create output directories (if not already created)
+# 2.2 Create all output directories
 for (subdir in output_subdirs) {
   dir_path <- paste0(output_root_path, subdir, "/")
   dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
@@ -243,7 +247,7 @@ for (subdir in output_subdirs) {
 
 # 2.3 Get list of L-strand files
 ff1 <- list.files(input_full_path, pattern = "\\_Lwenjian.txt$")
-cat("Number of L files found:", length(ff1), "\n")
+cat("Number of L-strand files found:", length(ff1), "\n")
 print(ff1)
 
 # 2.4 Process each L-strand file
@@ -392,10 +396,10 @@ for(i in 1:length(ff1)){
     sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE
   )
   
-  cat(paste("L file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
+  cat(paste("L-strand file processed:", i, "/", length(ff1), " -", ff1[i], "\n"))
 }
 
-cat("All L files processed! Output directory:", output_root_path, "\n")
+cat("All L-strand files processed! Output directory:", output_root_path, "\n")
 
 
 
