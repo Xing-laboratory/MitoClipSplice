@@ -76,11 +76,11 @@ A[,27]<-substr(A$seq, nchar(A$seq)-A[,22]-3, nchar(A$seq)-A[,22])      # first f
 
 
 # Function to extract and sum all numbers from a string (e.g., CIGAR)
-extract_and_sum_numbers <- function(str) {  
-  numbers_as_strings <- unlist(strsplit(str, "[^0-9]+"))  
-  sum_of_numbers <- sum(as.numeric(numbers_as_strings))  
-  return(sum_of_numbers)  
-}  
+extract_and_sum_numbers <- function(str) {
+  numbers_as_strings <- unlist(strsplit(str, "[^0-9]+"))
+  sum_of_numbers <- sum(as.numeric(numbers_as_strings))
+  return(sum_of_numbers)
+}
 sums <- sapply(A$cigar, extract_and_sum_numbers)
 sums_copy<-as.data.frame(sums)
 
